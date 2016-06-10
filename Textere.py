@@ -67,7 +67,6 @@ class singleton:
 #------------------------------------------------------------------------------
 #------------------------------------------------------------------------------
 
-#We have a global application context with which we register the beans
 class ConfigurationManager():
 
     def __init__(self):
@@ -123,6 +122,7 @@ class ConfigurationManager():
 #------------------------------------------------------------------------------
 #------------------------------------------------------------------------------        
      
+#We have a global application context with which we register the beans
 @singleton
 class ApplicationContext():
     
@@ -154,7 +154,7 @@ class ApplicationContext():
         if self._use_logging:
             self.cm.config_logging(self.cm['log_file'], self.cm['log_level'])
         
-    #Enter & Exit methods to allow use with runtime context
+    #Enter & Exit methods
     def open_context(self):
         
         #We need to start our eggs and add them into our dict
@@ -208,3 +208,23 @@ class autowire(object):
             print('Adding object to Unranked Objects with name %s' % (self._name))
             self._context._unranked_objects[self._name] = self.object
         return self.object
+        
+#------------------------------------------------------------------------------
+#------------------------------------------------------------------------------
+#-------------------Generate Getters & Setters---------------------------------
+#------------------------------------------------------------------------------
+#------------------------------------------------------------------------------
+#------------------------------------------------------------------------------
+        
+class getters(object):
+    
+    def __init__(self, property_start_character="_"):
+        self.prop_start_char = property_start_character
+        
+    def __call__(self, obj):
+        
+        for attr in dir(obj):
+            
+            #Add a Getter for the property and bind it to the object
+            if attr[0] == self.prop_start_char:
+                pass
