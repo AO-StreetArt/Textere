@@ -7,17 +7,25 @@ Textere Advanced Example
 @author: alex
 """
 
-from Textere import ApplicationContext, autowire, singleton, getters, setters
 import sys
-import logging
+
+from Textere import ApplicationContext, autowire, singleton, getters, setters
+from Eggs import ConfigurationEgg, LoggingEgg
 
 #Start the application context
-c = ApplicationContext(ranked_startup=True, use_logging=True)
+c = ApplicationContext(ranked_startup=True)
+
+#Register the Logging & Configuration Eggs with the Application Context
+cegg = ConfigurationEgg()
+legg = LoggingEgg()
+
+c.wire_egg(1, "config", cegg)
+c.wire_egg(2, "logging", legg)
 
 #Autowire objects such that they will get started automatically when the context is opened
 @getters(property_start_character="_", context=c, name="str_factory")
 @setters(property_start_character="_", context=c, name="str_factory")
-@autowire(rank=1, context=c, name="str_factory")
+@autowire(rank=3, context=c, name="str_factory")
 @singleton
 class StringFactory(object):
     
@@ -32,7 +40,7 @@ class StringFactory(object):
         self._counter=None
         self._context=None
 
-@autowire(rank=2, context=c, name="sen_factory")        
+@autowire(rank=4, context=c, name="sen_factory")        
 @singleton
 class SentanceFactory(object):
     
@@ -50,13 +58,20 @@ class SentanceFactory(object):
 if __name__ == "__main__":
     if len(sys.argv) == 2:
         
+        logging = c.eggs["logging"]
+        
         #Open the application context, which builds all the autowired objects
         c.open_context()
         print("Context opened")
         
+        c.eggs["config"].configure(sys.argv[1])
+        
+        cm = c.eggs["config"]
+        
+        c.eggs["logging"].configure(cm["log_file"], cm["log_level"])
+        
         #Configure the application using the built-in configuration tool
-        c.configure(sys.argv[1])
-        logging.debug(c.cm['test'])
+        logging.debug(cm['test'])
         
         fact = c.eggs["str_factory"]
         count = fact.get_counter()

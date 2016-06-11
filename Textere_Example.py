@@ -8,13 +8,18 @@ Textere Example
 """
 
 from Textere import ApplicationContext, autowire
+from Eggs import ConfigurationEgg
 import sys
 
 #Start the application context
-c = ApplicationContext(ranked_startup=True, use_logging=True)
+c = ApplicationContext(ranked_startup=True)
+
+#Import and wire in the configuration Egg
+config = ConfigurationEgg(rank=1, name="configuration")
+c.wire_egg(config)
 
 #Autowire an object such that it will get started automatically when the context is opened
-@autowire(rank=1, context=c, name="str_factory")
+@autowire(rank=2, context=c, name="str_factory")
 class StringFactory(object):
     
     def __init__(self, context):
@@ -34,8 +39,8 @@ if __name__ == "__main__":
         print("Context opened")
         
         #Configure the application using the built-in configuration tool
-        c.configure(sys.argv[1])
-        print(c.cm['test'])
+        c.eggs["configuration"].configure(sys.argv[1])
+        print(c.eggs["configuration"]['test'])
         
         #Retrieve the autowired object and use it
         print(c.eggs["str_factory"].get_str())
@@ -46,7 +51,8 @@ if __name__ == "__main__":
            
         c.close_context()
            
-        print(c.eggs["str_factory"].counter)
+        #Will throw an error as the context is closed
+        #print(c.eggs["str_factory"].counter)
     else:
         print("Wrong number of Input Parameters")
         print("You can execute the script with 'python %s config_file'" % (sys.argv[0]))
