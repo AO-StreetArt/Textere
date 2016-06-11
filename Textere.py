@@ -12,6 +12,7 @@ import collections
 import logging
 import types
 import inspect
+import new
 
 #------------------------------------------------------------------------------
 #------------------------------------------------------------------------------
@@ -142,9 +143,15 @@ class ApplicationContext():
         self._use_logging = use_logging
         self._ranked_startup=ranked_startup
         
+        #Autowire Lists
+        
         #An unordered dict of ranks & objects
         self._ranked_objects = {}
         self._unranked_objects = {}
+        
+        #Getter & Setter Lists
+        self._getter_list = []
+        self._setter_list = []
         
     #Configure the Application
     def configure(self, config_file):
@@ -157,7 +164,7 @@ class ApplicationContext():
     #Enter & Exit methods
     def open_context(self):
         
-        #We need to start our eggs and add them into our dict
+        #Start our eggs and add them into our dict
         if self._ranked_startup:
             print("Entering Egg Creation within Context Manager")
             od = collections.OrderedDict(sorted(self._ranked_objects.items()))
@@ -171,6 +178,61 @@ class ApplicationContext():
             for key, value in self._unranked_objects.iteritems():
                 new_obj = value()
                 self.eggs[key] = new_obj
+                
+        #Generate Getters & Setters for eggs
+        for pair in self._getter_list:
+            prop_start_char=pair[0]
+            name=pair[1]
+            obj=pair[2]
+            for attr in dir(self.eggs[name]):
+            
+                print("Testing Attribute %s" % (attr))
+                
+                #Add a Getter for the property and bind it to the object
+                if attr[0] == prop_start_char and attr not in _excluded_keys and attr[:2]!="__":
+                    
+                    print("Attribute starts with correct character")
+                    
+                    attr_name = attr[1:]
+                    
+                    #Here we define a set of symbols within an exec statement and put them into the dictionary d
+                    d = {}
+                    exec "def get_%s(self): return self.%s" % (attr_name, attr) in d
+                    print("Function object defined in d: %s" % (d['get_%s' % (attr_name)]))
+                    
+                    #Now, we bind the get method stored in d['get_%s'] to our object (class)
+                    #types.MethodType( d['get_%s' % (attr_name)], self.eggs[name] )
+                    func = d['get_%s' % (attr_name)].__get__(d['get_%s' % (attr_name)], obj)
+                    setattr(self.eggs[name], func.__name__, func)
+                    #new.instancemethod(d['get_%s' % (attr_name)], self.eggs[name], self.eggs[name].__class__)
+                    print("Getter bound to object %s" % (self.eggs[name]))
+                    
+        for pair in self._setter_list:
+            prop_start_char=pair[0]
+            name=pair[1]
+            obj=pair[2]
+            for attr in dir(self.eggs[name]):
+                
+            
+                print("Testing Attribute %s" % (attr))
+                
+                #Add a Getter for the property and bind it to the object
+                if attr[0] == prop_start_char and attr not in _excluded_keys and attr[:2]!="__":
+                    
+                    print("Attribute starts with correct character")
+                    
+                    attr_name = attr[1:]
+                    
+                    #Here we define a set of symbols within an exec statement and put them into the dictionary d
+                    d = {}
+                    exec "def set_%s(self, new_val): self.%s = new_val" % (attr_name, attr) in d
+                    print("Function object defined in d: %s" % (d['set_%s' % (attr_name)]))
+                    
+                    #Now, we bind the get method stored in d['get_%s'] to our object (class)
+                    #types.MethodType( d['get_%s' % (attr_name)], self.eggs[name] )
+                    func = d['set_%s' % (attr_name)].__get__(d['set_%s' % (attr_name)], obj)
+                    setattr(self.eggs[name], func.__name__, func)
+                    print("Setter bound to object %s" % (self.eggs[name]))
         
     def close_context(self):
         
@@ -218,13 +280,26 @@ class autowire(object):
         
 class getters(object):
     
-    def __init__(self, property_start_character="_"):
+    def __init__(self, property_start_character="_", context=None, name=""):
         self.prop_start_char = property_start_character
+        self._context = context
+        self._name=name
+        print('Getters initialized with property start character %s' % (self.prop_start_char))
         
     def __call__(self, obj):
         
-        for attr in dir(obj):
-            
-            #Add a Getter for the property and bind it to the object
-            if attr[0] == self.prop_start_char:
-                pass
+        self._context._getter_list.append((self.prop_start_char, self._name, obj))
+        return obj
+        
+class setters(object):
+    
+    def __init__(self, property_start_character="_", context=None, name=""):
+        self.prop_start_char = property_start_character
+        self._context = context
+        self._name=name
+        print('Setters initialized with property start character %s' % (self.prop_start_char))
+        
+    def __call__(self, obj):
+        
+        self._context._setter_list.append((self.prop_start_char, self._name, obj))
+        return obj

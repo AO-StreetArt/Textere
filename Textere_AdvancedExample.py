@@ -7,7 +7,7 @@ Textere Advanced Example
 @author: alex
 """
 
-from Textere import ApplicationContext, autowire, singleton
+from Textere import ApplicationContext, autowire, singleton, getters, setters
 import sys
 import logging
 
@@ -15,13 +15,15 @@ import logging
 c = ApplicationContext(ranked_startup=True, use_logging=True)
 
 #Autowire objects such that they will get started automatically when the context is opened
-@singleton
+@getters(property_start_character="_", context=c, name="str_factory")
+@setters(property_start_character="_", context=c, name="str_factory")
 @autowire(rank=1, context=c, name="str_factory")
+@singleton
 class StringFactory(object):
     
     def __init__(self, context):
-        self._counter=0
         self._context = context
+        self._counter=0
         
     def get_str(self):
         return "%s" % (self._counter)
@@ -29,9 +31,9 @@ class StringFactory(object):
     def __teardown__(self):
         self._counter=None
         self._context=None
-        
+
+@autowire(rank=2, context=c, name="sen_factory")        
 @singleton
-@autowire(rank=2, context=c, name="sen_factory")
 class SentanceFactory(object):
     
     def __init__(self, context):
@@ -56,17 +58,24 @@ if __name__ == "__main__":
         c.configure(sys.argv[1])
         logging.debug(c.cm['test'])
         
+        fact = c.eggs["str_factory"]
+        count = fact.get_counter()
+        
         #Retrieve the autowired object and use it
-        logging.debug(c.eggs["sen_factory"].get_sentance())
+        logging.debug(fact.get_sentance())
         
         #Iterate the counter attribute of the factory
-        c.eggs["str_factory"]._counter+=1
-        logging.debug(c.eggs["str_factory"]._counter)
+        #c.eggs["str_factory"].set_counter(c.eggs["str_factory"], c.eggs["str_factory"].get_counter(c.eggs["str_factory"])+1)
+        fact.set_counter(count+1)
+        fact._counter+=1
+        #logging.debug(c.eggs["str_factory"].get_counter(c.eggs["str_factory"]))
+        logging.debug(fact.get_counter())
            
         c.close_context()
            
         try:
-            logging.debug(c.eggs["str_factory"]._counter)
+            #logging.debug(c.eggs["str_factory"].get_counter(c.eggs["str_factory"]))
+            logging.debug(c.eggs["str_factory"].get_counter())
         except Exception as e:
             logging.error("Error getting Egg from Context")
             logging.error(e)
